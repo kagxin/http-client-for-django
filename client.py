@@ -4,28 +4,18 @@ import cookielib
 import json
 import urllib
 import urllib2
-import logging
+from my_logger import get_logger
+from my_config import userinfo, the_test_url
 
-REMOTE_HOST = '192.168.1.244'
+#REMOTE_HOST = '192.168.1.244'
+REMOTE_HOST = '112.124.44.2**'
 REMOTE_PORT = 80
-# res = remote_login(username='kx', password='2012', uri='mobile/login/')
-# print(res)
-#
-# rsp = urllib2.urlopen("http://localhost/mobile/register/")
-# tmp = rsp.read()
-# tmp = json.loads(tmp)
-# print(tmp)
-# tmp.pop("status")
-# data = {"username":"testss", "password":"2012", "email":"123@123.com"}
-# data.update(tmp)
-# res = urllib2.urlopen("http://localhost/mobile/register/", urllib.urlencode(data))
-# print(res.read())
- 
+logger = get_logger()
 
 class DjangoClient(object):
     def __init__(self, username, password):
         self._login(username, password)
-        self.error_cnt = 0
+        self.error_case = []
         
     def _use_cookie(self):
         cj = cookielib.CookieJar()
@@ -64,21 +54,79 @@ class DjangoClient(object):
             return None
 
         resobj['remote_session'] = remote_session
-        
+
         return resobj
 
     def get(self, url):
         url = "http://%s:%d"%(REMOTE_HOST,REMOTE_PORT) + url
-        res = urllib2.urlopen(url)
+        logger.info("url:{}".format(url))
+        try:
+            res = urllib2.urlopen(url)
+        except urllib2.HTTPError:
+            self.error_case.append(url)
+            return {"message":"server internel error."}
         if res.code != 200:
-            self.error_cnt = self.error_cnt + 1
+            self.error_case.append(url)
+            return res.read()
+        try:
+            dct = json.loads(res.read())
+        except ValueError:
+            return res.read()
 
-        return res
+        return json.dumps(dct, indent=1)
 
-    def post(self, url, para):
+    def post(self, url, data):
+        post_url = "http://%s:%d"%(REMOTE_HOST,REMOTE_PORT) + url
+        res =  self.get(url)
+        dct = json.loads(res)
+        csrfmiddlewaretoken = dct.get('csrfmiddlewaretoken')
+        data.update({"csrfmiddlewaretoken":csrfmiddlewaretoken})
+        try:
+            res = urllib2.urlopen(post_url, urllib.urlencode(data))
+        except urllib2.HTTPError:
+            self.error_case.append(url)
+
+        if res.code != 200:
+            self.error_case.append(url)
+            return res.read()
+        try:
+            dct = json.loads(res.read())
+        except ValueError:
+            return res.read()
+
+        return json.dumps(dct, indent=1)
+
+    def test_case(self):
+        for url in the_test_url:
+            print(len(url))
+    if len(url)==2:
+        res = client.post(*url)
+        logger.info("{},{}".format(url, res))
+    elif len(url)==1:
+        res = client.get(url[0])
+        logger.info("{},{}".format(url, res))
+    else:
         pass
+
+
     
-client = DjangoClient('kx', '2017')
+client = DjangoClient('*****', '*')
 
 res = client.get("/mobile/")
-print(res.read())
+print(res)
+
+
+#data = {"feedback_content":"neiyong", "feedback_username":"kx", "feedback_contact":"18211710944"}
+#res = client.post("/mobile/feedback/", data)
+
+
+
+
+logger.warn("infosafdsf---")
+#print(the_test_url)
+#print(""client.error_cnt)
+#logger.info("failed case {}".format(client.error_cnt))
+logger.info("failed case :\n")
+for url in client.error_case:
+    logger.info("url:{}".format(url))
+    
