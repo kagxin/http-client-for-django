@@ -5,11 +5,9 @@ import json
 import urllib
 import urllib2
 from my_logger import get_logger
-from my_config import userinfo, the_test_url
+from my_config import userinfo, the_test_url, REMOTE_HOST, REMOTE_PORT, PASSWORD, USERNAME
 
-#REMOTE_HOST = '192.168.1.244'
-REMOTE_HOST = '112.124.44.2**'
-REMOTE_PORT = 80
+
 logger = get_logger()
 
 class DjangoClient(object):
@@ -85,7 +83,7 @@ class DjangoClient(object):
             res = urllib2.urlopen(post_url, urllib.urlencode(data))
         except urllib2.HTTPError:
             self.error_case.append(url)
-
+            return "500"
         if res.code != 200:
             self.error_case.append(url)
             return res.read()
@@ -96,37 +94,53 @@ class DjangoClient(object):
 
         return json.dumps(dct, indent=1)
 
-    def test_case(self):
+    def test_case(self, *arg):
+        if len(arg) == 0:
+            arg = 'foo'
+        if isinstance(arg[0],int):
+            if len(the_test_url[arg[0]])==1:
+                res = client.get(the_test_url[arg[0]][0])
+                logger.info("{},{}".format(the_test_url[arg[0]][0], res))
+            elif len(the_test_url[arg[0]])==2:
+                res = client.post(*the_test_url[arg[0]])
+                logger.info("{},{}".format(url[arg[0]][0], res))
+            return
+                
+                
         for url in the_test_url:
             print(len(url))
-    if len(url)==2:
-        res = client.post(*url)
-        logger.info("{},{}".format(url, res))
-    elif len(url)==1:
-        res = client.get(url[0])
-        logger.info("{},{}".format(url, res))
-    else:
-        pass
+            if len(url)==2:
+                res = client.post(*url)
+                logger.info("{},{}".format(url, res))
+            elif len(url)==1:
+                res = client.get(url[0])
+                logger.info("{},{}".format(url, res))
+            else:
+                pass
+    def test_case_feedback(self, *arg):
+        url = '/mobile/feedback/'
+        data = {"feedback_content":"kx feedback_content", "feedback_username":"kx", "feedback_contact":"18211712212"}
 
+        res = self.post(url, data)
+        print(res)
 
+    def test_update_usr_data(self):
+        url = '/mobile/update-user-info/'
+        data = {"username":"kangxin", "phone":"18212345564", "email":"kangxin@163.com", "gender":"gender", "position":"asf", "company":"asdf", "dept":"asdf"}
+        res = self.post(url, data)
+
+        print(res)
     
-client = DjangoClient('*****', '*')
+    
+client = DjangoClient(USERNAME, PASSWORD)
 
-res = client.get("/mobile/")
-print(res)
+client.test_case(-4)
 
-
-#data = {"feedback_content":"neiyong", "feedback_username":"kx", "feedback_contact":"18211710944"}
-#res = client.post("/mobile/feedback/", data)
-
-
-
-
-logger.warn("infosafdsf---")
-#print(the_test_url)
-#print(""client.error_cnt)
-#logger.info("failed case {}".format(client.error_cnt))
-logger.info("failed case :\n")
 for url in client.error_case:
     logger.info("url:{}".format(url))
-    
+
+#client.test_case_feedback()
+#client.test_update_usr_data()
+
+
+
